@@ -1,4 +1,4 @@
-package com.example.auth.domain.product;
+package com.example.auth.dtos;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,6 +10,6 @@ public record ProductRequestDTO(
         String name,
 
         @NotNull
-        Integer price
+        Float price
 ) {
 }

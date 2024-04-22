@@ -1,0 +1,19 @@
+version: '3.1'
+
+services:
+  db:
+    image: mysql
+    ports:
+      - "3308:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: knx
+      MYSQL_DATABASE: lab7
+
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "9091:9090"

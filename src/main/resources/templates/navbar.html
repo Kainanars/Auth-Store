@@ -1,0 +1,98 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-info fixed-top">
+<div class="container">
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <span class="nav-link">Welcome, <span th:text="${username}"></span></span>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-link" id="sessionDuration"></span>
+                </li>
+                <li class="nav-item">
+                    <button class="btn btn-primary" id="logoutButton">Logout</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<script>
+    document.getElementById("logoutButton").addEventListener("click", function() {
+        fetch("/auth/logout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Redireciona para a página de login após logout
+                    window.location.href = "/login";
+                } else {
+                    throw new Error("Logout failed");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+    });
+
+    // Token JWT
+    const token = `[[${token}]]`;
+    console.log(token)
+    // Decodifica o token JWT para obter a data de expiração
+    function decodeToken(token) {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
+    }
+
+    const decodedToken = decodeToken(token);
+    const expirationDate = new Date(decodedToken.exp * 1000);
+
+    function updateRemainingTime() {
+        // Calcula o tempo restante em minutos e segundos
+        const currentTime = new Date().getTime();
+        const remainingTime = (expirationDate - currentTime) / 1000;
+        const remainingMinutes = Math.floor(remainingTime / 60);
+        const remainingSeconds = Math.floor(remainingTime % 60);
+        const formattedTime = `${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+
+        document.getElementById("sessionDuration").textContent = "Access expires in " + formattedTime;
+
+        if (remainingTime <= 0) {
+            logout(); // Chama a função de logout quando o tempo expirar
+        }
+    }
+
+    updateRemainingTime();
+
+    // Atualiza o tempo restante a cada segundo
+    setInterval(updateRemainingTime, 1000);
+
+    document.getElementById("logoutButton").addEventListener("click", function() {
+        logout()
+    });
+    function logout() {
+        fetch("/auth/logout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Redireciona para a página de login após logout
+                    window.location.href = "/login";
+                } else {
+                    throw new Error("Logout failed");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+    }
+</script>

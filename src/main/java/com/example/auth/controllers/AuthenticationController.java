@@ -1,51 +1,86 @@
 package com.example.auth.controllers;
 
-import com.example.auth.domain.user.AuthenticationDTO;
-import com.example.auth.domain.user.LoginResponseDTO;
-import com.example.auth.domain.user.RegisterDTO;
-import com.example.auth.domain.user.User;
-import com.example.auth.infra.security.TokenService;
-import com.example.auth.repositories.UserRepository;
+import com.example.auth.dtos.AuthenticationDTO;
+import com.example.auth.dtos.LoginResponseDTO;
+import com.example.auth.dtos.RegisterDTO;
+import com.example.auth.entities.User;
+import com.example.auth.exceptions.UserAlreadyExistsException;
+import com.example.auth.security.TokenService;
+import com.example.auth.services.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("auth")
 public class AuthenticationController {
-    @Autowired
-    private AuthenticationManager authenticationManager;
-    @Autowired
-    private UserRepository repository;
+
     @Autowired
     private TokenService tokenService;
 
-    @PostMapping("/login")
-    public ResponseEntity login(@RequestBody @Valid AuthenticationDTO data){
-        var usernamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.password());
-        var auth = this.authenticationManager.authenticate(usernamePassword);
+    @Autowired
+    private AuthService authService;
 
-        var token = tokenService.generateToken((User) auth.getPrincipal());
+    @PostMapping("/login")
+    @Operation(summary = "Authenticates a user and returns a JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Authentication successful"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
+    public ResponseEntity login(@RequestBody @Valid AuthenticationDTO authDto, HttpSession session) {
+        User user = authService.login(authDto);
+        String token = tokenService.generateToken(user);
+
+        // Salva o token na sessão
+        session.setAttribute("token", token);
+        session.setAttribute("username", user.getUsername());
+        session.setAttribute("role", user.getRole());
 
         return ResponseEntity.ok(new LoginResponseDTO(token));
     }
 
     @PostMapping("/register")
-    public ResponseEntity register(@RequestBody @Valid RegisterDTO data){
-        if(this.repository.findByLogin(data.login()) != null) return ResponseEntity.badRequest().build();
-
-        String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
-        User newUser = new User(data.login(), encryptedPassword, data.role());
-
-        this.repository.save(newUser);
-
-        return ResponseEntity.ok().build();
+    @Operation(summary = "Register a user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "202", description = "Register successful"),
+            @ApiResponse(responseCode = "401", description = "Invalid register")
+    })
+    public ResponseEntity register(@RequestBody @Valid RegisterDTO data) {
+        try {
+            authService.register(data);
+            return ResponseEntity.ok().build();
+        } catch (UserAlreadyExistsException e) {
+            return ResponseEntity.badRequest().body("User with this login already exists.");
+        }
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate(); // Inválida a sessão
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session not found");
+        }
+    }
+
+    @ControllerAdvice
+    public static class GlobalExceptionHandler {
+
+        @ExceptionHandler(UserAlreadyExistsException.class)
+        @ResponseStatus(HttpStatus.BAD_REQUEST)
+        public ResponseEntity<String> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
 }
+

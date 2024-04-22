@@ -1,12 +1,11 @@
-package com.example.auth.domain.product;
+package com.example.auth.entities;
 
+import com.example.auth.dtos.ProductRequestDTO;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.math.BigInteger;
 
 @Table(name = "product")
 @Entity(name = "product")
@@ -21,7 +20,7 @@ public class Product {
 
     private String name;
 
-    private Integer price;
+    private Float price;
 
     public Product(ProductRequestDTO data){
         this.price = data.price();

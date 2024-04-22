@@ -1,10 +1,7 @@
-package com.example.auth.domain.user;
+package com.example.auth.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
+@Data
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -30,6 +28,14 @@ public class User implements UserDetails {
         this.login = login;
         this.password = password;
         this.role = role;
+    }
+
+    public Integer getRole(){
+        if (role == UserRole.ADMIN){
+            return 0;
+        }else {
+            return 1;
+        }
     }
 
     @Override
